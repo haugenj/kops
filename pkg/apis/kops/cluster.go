@@ -158,7 +158,7 @@ type ClusterSpec struct {
 	CloudConfig                    *CloudConfiguration           `json:"cloudConfig,omitempty"`
 	ExternalDNS                    *ExternalDNSConfig            `json:"externalDns,omitempty"`
 
-	// NodeTerminationHandlerConfig determines the cluster autoscaler configuration.
+	// NodeTerminationHandlerConfig determines the node termination handler configuration.
 	NodeTerminationHandler *NodeTerminationHandlerConfig `json:"nodeTerminationHandler,omitempty"`
 	// MetricsServerConfig determines the metrics server configuration.
 	MetricsServer *MetricsServerConfig `json:"metricsServer,omitempty"`

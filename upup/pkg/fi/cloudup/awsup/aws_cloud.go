@@ -18,6 +18,8 @@ package awsup
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"strconv"
 	"strings"
 	"sync"
@@ -113,6 +115,7 @@ type AWSCloud interface {
 	Autoscaling() autoscalingiface.AutoScalingAPI
 	Route53() route53iface.Route53API
 	Spotinst() spotinst.Cloud
+	SQS() sqsiface.SQSAPI
 
 	// TODO: Document and rationalize these tags/filters methods
 	AddTags(name *string, tags map[string]string)
@@ -181,6 +184,7 @@ type awsCloudImplementation struct {
 	route53     *route53.Route53
 	spotinst    spotinst.Cloud
 	sts         *sts.STS
+	sqs 		*sqs.SQS
 
 	region string
 
@@ -313,6 +317,15 @@ func NewAWSCloud(region string, tags map[string]string) (AWSCloud, error) {
 				return c, err
 			}
 		}
+
+		// todo - wrap this in a check for Queue processor being enabled
+		sess, err = session.NewSession(config)
+		if err != nil {
+			return c, err
+		}
+		c.sqs = sqs.New(sess, config)
+		c.sqs.Handlers.Send.PushFront(requestLogger)
+		c.addHandlers(region, &c.sqs.Handlers)
 
 		awsCloudInstances[region] = c
 		raw = c
@@ -1584,6 +1597,10 @@ func (c *awsCloudImplementation) Route53() route53iface.Route53API {
 
 func (c *awsCloudImplementation) Spotinst() spotinst.Cloud {
 	return c.spotinst
+}
+
+func (c *awsCloudImplementation) SQS() sqsiface.SQSAPI {
+	return c.sqs
 }
 
 func (c *awsCloudImplementation) FindVPCInfo(vpcID string) (*fi.VPCInfo, error) {

@@ -141,6 +141,7 @@ func (e *VPC) Run(c *fi.Context) error {
 }
 
 func (_ *VPC) RenderAWS(t *awsup.AWSAPITarget, a, e, changes *VPC) error {
+	klog.Warning("JASON in vpc RenderAWS")
 	shared := fi.BoolValue(e.Shared)
 	if shared {
 		// Verify the VPC was found and matches our required settings

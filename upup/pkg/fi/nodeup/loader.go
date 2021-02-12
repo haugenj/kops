@@ -33,6 +33,7 @@ func (l *Loader) Build() (map[string]fi.Task, error) {
 		context := &fi.ModelBuilderContext{
 			Tasks: tasks,
 		}
+		klog.Warning("JASON calling Build from nodeup/loader.go")
 		err := builder.Build(context)
 		if err != nil {
 			return nil, err

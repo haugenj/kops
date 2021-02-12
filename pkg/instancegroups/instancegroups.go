@@ -336,6 +336,9 @@ func (c *RollingUpdateCluster) drainTerminateAndWait(u *cloudinstances.CloudInst
 
 	if isBastion {
 		// We don't want to validate for bastions - they aren't part of the cluster
+	} else if *c.Cluster.Spec.NodeTerminationHandler.Enabled {
+		// Skip the draining call, NTH will handle it
+		klog.Warning("JASON - NTH is enabled!")
 	} else if c.CloudOnly {
 
 		klog.Warning("Not draining cluster nodes as 'cloudonly' flag is set.")

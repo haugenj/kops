@@ -166,7 +166,7 @@ upup/models/bindata.go: ${UPUP_MODELS_BINDATA_SOURCES}
 codegen: kops-gobindata
 	go install k8s.io/kops/upup/tools/generators/...
 	${GOPATH_1ST}/bin/fitask --input-dirs k8s.io/kops/upup/pkg/fi/... \
-	    --go-header-file "hack/boilerplate/boilerplate.generatego.txt"
+	    --go-header-file "hack/boilerplate/boilerplate.generatego.txt" -o ./
 
 .PHONY: protobuf
 protobuf:

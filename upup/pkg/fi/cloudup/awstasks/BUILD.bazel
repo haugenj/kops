@@ -61,6 +61,8 @@ go_library(
         "securitygroup_fitask.go",
         "securitygrouprule.go",
         "securitygrouprule_fitask.go",
+        "sqs.go"
+        "sqs_fitask.go"
         "sshkey.go",
         "sshkey_fitask.go",
         "subnet.go",

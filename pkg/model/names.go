@@ -261,3 +261,7 @@ func (b *KopsModelContext) LinkToPrivateRouteTableInZone(zoneName string) *awsta
 func (b *KopsModelContext) InstanceName(ig *kops.InstanceGroup, suffix string) string {
 	return b.AutoscalingGroupName(ig) + suffix
 }
+
+func (b *KopsModelContext) QueueName() string {
+	return b.ClusterName() + "-sqs-queue"
+}

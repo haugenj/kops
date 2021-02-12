@@ -609,6 +609,7 @@ func (c *ApplyClusterCmd) Run(ctx context.Context) error {
 	}
 	switch kops.CloudProviderID(cluster.Spec.CloudProvider) {
 	case kops.CloudProviderAWS:
+		klog.Warning("JASON!")
 		{
 			awsModelContext := &awsmodel.AWSModelContext{
 				KopsModelContext: modelContext,
@@ -634,6 +635,17 @@ func (c *ApplyClusterCmd) Run(ctx context.Context) error {
 				}
 			} else {
 				l.Builders = append(l.Builders, awsModelBuilder)
+			}
+			// todo - replace with feature flag for Queue Processor mode?
+			if c.Cluster.Spec.NodeTerminationHandler != nil && *c.Cluster.Spec.NodeTerminationHandler.Enabled {
+				klog.Warning("NTH is enabled")
+				l.Builders = append(l.Builders, &awsmodel.SQSBuilder{
+					AWSModelContext: awsModelContext,
+					QueueName: "myFirstQueuePlsWork",
+					Lifecycle: &clusterLifecycle,
+				})
+			} else {
+				klog.Warning("NTH is NOT enabled")
 			}
 		}
 	case kops.CloudProviderDO:

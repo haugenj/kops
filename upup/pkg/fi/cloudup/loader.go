@@ -44,6 +44,7 @@ func (l *Loader) BuildTasks(assetBuilder *assets.AssetBuilder, lifecycle *fi.Lif
 			Tasks:              l.tasks,
 			LifecycleOverrides: lifecycleOverrides,
 		}
+		klog.Warning("JASON about to call Build from cloudup/loader.go")
 		err := builder.Build(context)
 		if err != nil {
 			return nil, err

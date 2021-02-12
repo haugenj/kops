@@ -18,6 +18,7 @@ package awsup
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/autoscaling/autoscalingiface"
@@ -44,6 +45,10 @@ type MockAWSCloud struct {
 	tags   map[string]string
 
 	zones []*ec2.AvailabilityZone
+}
+
+func (c *MockAWSCloud) SQS() sqsiface.SQSAPI {
+	panic("implement me")
 }
 
 var _ fi.Cloud = (*MockAWSCloud)(nil)

@@ -62,6 +62,7 @@ var _ fi.ModelBuilder = &AutoscalingGroupModelBuilder{}
 // Build is responsible for constructing the aws autoscaling group from the kops spec
 func (b *AutoscalingGroupModelBuilder) Build(c *fi.ModelBuilderContext) error {
 	for _, ig := range b.InstanceGroups {
+		klog.Warning("JASON - we're in the ASG BUild")
 		name := b.AutoscalingGroupName(ig)
 
 		if featureflag.SpotinstHybrid.Enabled() {
