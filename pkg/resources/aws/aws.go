@@ -83,6 +83,11 @@ func ListResourcesAWS(cloud awsup.AWSCloud, clusterName string) (map[string]*res
 		ListIAMInstanceProfiles,
 		ListIAMRoles,
 		ListIAMOIDCProviders,
+
+		// SQS
+		ListSQSQueues,
+		// EventBridge
+		// Todo
 	}
 
 	if featureflag.Spotinst.Enabled() {

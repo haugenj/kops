@@ -636,12 +636,12 @@ func (c *ApplyClusterCmd) Run(ctx context.Context) error {
 			} else {
 				l.Builders = append(l.Builders, awsModelBuilder)
 			}
-			// todo - replace with feature flag for Queue Processor mode?
+			// todo - replace with feature flag for Queue Processor mode
 			if c.Cluster.Spec.NodeTerminationHandler != nil && *c.Cluster.Spec.NodeTerminationHandler.Enabled {
 				klog.Warning("NTH is enabled")
 				l.Builders = append(l.Builders, &awsmodel.SQSBuilder{
 					AWSModelContext: awsModelContext,
-					QueueName: "myFirstQueuePlsWork",
+					QueueName: cluster.Name,
 					Lifecycle: &clusterLifecycle,
 				})
 			} else {

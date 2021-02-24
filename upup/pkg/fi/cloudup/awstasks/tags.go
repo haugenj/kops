@@ -67,3 +67,23 @@ func intersectTags(tags []*ec2.Tag, desired map[string]string) map[string]string
 	}
 	return actual
 }
+
+// intersectSQSTags does the same thing as intersectTags, but takes different input because SQS tags are listed differently
+func intersectSQSTags(tags map[string]*string, desired map[string]string) map[string]string {
+	if tags == nil {
+		return nil
+	}
+	actual := make(map[string]string)
+	for k, v := range tags {
+		vv := aws.StringValue(v)
+
+		if _, found := desired[k]; found {
+			actual[k] = vv
+		}
+	}
+	if len(actual) == 0 && desired == nil {
+		// Avoid problems with comparison between nil & {}
+		return nil
+	}
+	return actual
+}

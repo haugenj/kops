@@ -20,9 +20,11 @@ import (
 	"k8s.io/klog"
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/cloudup/awstasks"
+	"strings"
 )
 
 //  todo SQSBuilder builds an SQS boiiiiiii
+// from apply_cluster.go
 type SQSBuilder struct {
 	*AWSModelContext
 	QueueName string
@@ -34,11 +36,13 @@ var _ fi.ModelBuilder = &SQSBuilder{}
 
 func (b *SQSBuilder) Build(c *fi.ModelBuilderContext) error {
 	klog.Warning("JASON In the SQS build")
+	clusterName := b.AWSModelContext.ClusterName()
+	queueName := strings.Replace(clusterName, ".", "_", -1)
 	// @step: now lets build the sqs task
 	task := &awstasks.SQS{
-		Name:           s(b.QueueName),
+		Name:           &queueName,
 		Lifecycle:      b.Lifecycle,
-		Tags:           nil,
+		Tags:           b.CloudTags(b.QueueName, false),
 	}
 
 	c.AddTask(task)

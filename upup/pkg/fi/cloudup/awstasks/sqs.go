@@ -31,6 +31,7 @@ import (
 // +kops:fitask
 type SQS struct {
 	Name      *string
+	URL 		*string
 	Lifecycle *fi.Lifecycle
 
 	Tags map[string]string
@@ -38,79 +39,70 @@ type SQS struct {
 
 var _ fi.CompareWithID = &SQS{}
 
-func (s *SQS) CompareWithID() *string {
-	return s.Name
+func (q *SQS) CompareWithID() *string {
+	return q.URL
 }
 
-func (s *SQS) Find(c *fi.Context) (*SQS, error) {
+func (q *SQS) Find(c *fi.Context) (*SQS, error) {
 	klog.Warning("JASON in sqs Find")
-	//
-	//cloud := c.Cloud.(awsup.AWSCloud)
-	//
-	//request := &sqs.ListQueuesInput{
-	//	MaxResults:      aws.Int64(2),
-	//	NextToken:       nil,
-	//	QueueNamePrefix: s.Name,
-	//}
-	//
-	//response, err := cloud.SQS().ListQueues(request)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error listing SQS queues: %v", err)
-	//}
-	//if response == nil || len(response.QueueUrls) == 0 {
-	//	return nil, nil
-	//}
-	//
-	//if len(response.QueueUrls) != 1 {
-	//	return nil, fmt.Errorf("found multiple SQS queues matching queue name")
-	//}
-	
-	//q := response.QueueUrls[0]
 
-	//{
-	//  "MessageRetentionPeriod": "300",
-	//  "Policy": "$(echo $QUEUE_POLICY | sed 's/\"/\\"/g')"
-	//}
-	//
-	//    * MessageRetentionPeriod – Returns the length of time, in seconds, for
-	//    which Amazon SQS retains a message.
-	//
-	//    * Policy – Returns the policy of the queue.
+	cloud := c.Cloud.(awsup.AWSCloud)
 
-	//all := "ALL"
-	//t, err := cloud.SQS().GetQueueAttributes(&sqs.GetQueueAttributesInput{
-	//	AttributeNames: []*string{&all},
-	//	QueueUrl:       q,
-	//})
-	//
-	//actual := &SQS{
-	//	Name:      t.,
-	//	Lifecycle: nil,
-	//	Tags:      nil,
-	//}
+	request := &sqs.ListQueuesInput{
+		MaxResults:      aws.Int64(2),
+		NextToken:       nil,
+		QueueNamePrefix: q.Name,
+	}
+	klog.Warningf("the request: %v", request)
+	response, err := cloud.SQS().ListQueues(request)
+	if err != nil {
+		return nil, fmt.Errorf("error listing SQS queues: %v", err)
+	}
+	klog.Warningf("JASON the find response: %v", response)
+	if response == nil || len(response.QueueUrls) == 0 {
+		return nil, nil
+	}
 
-	return nil, nil
+	if len(response.QueueUrls) != 1 {
+		return nil, fmt.Errorf("found multiple SQS queues matching queue name")
+	}
+	q.URL = response.QueueUrls[0]
+
+	tags, err := cloud.SQS().ListQueueTags(&sqs.ListQueueTagsInput{
+		QueueUrl: q.URL,
+	})
+	klog.Warningf("the found tags are: %v", tags)
+
+	actual := &SQS{
+		Name:   q.Name,
+		URL: 	q.URL,
+		Tags:   intersectSQSTags(tags.Tags, q.Tags),
+		Lifecycle: q.Lifecycle,
+	}
+	klog.Warningf("JASON this would be the actual: %v", actual)
+	return actual, nil
 }
 
-func (s *SQS) Run(c *fi.Context) error {
+func (q *SQS) Run(c *fi.Context) error {
 	// DefaultDeltaRunMethod implements the standard change-based run procedure:
 	// find the existing item; compare properties; call render with (actual, expected, changes)
-	return fi.DefaultDeltaRunMethod(s, c)
+	return fi.DefaultDeltaRunMethod(q, c)
 }
 
-func (_ *SQS) CheckChanges(a, e, changes *SQS) error {
+// TODO
+func (q *SQS) CheckChanges(a, e, changes *SQS) error {
 	return nil
 }
 
-func (s *SQS) RenderAWS(t *awsup.AWSAPITarget, a, e, changes *SQS) error {
+func (q *SQS) RenderAWS(t *awsup.AWSAPITarget, a, e, changes *SQS) error {
 	klog.Warning("JASON in sqs RenderAWS")
-	// thing is new, hasn't been created yet
+	// queue is new, hasn't been created yet
 	if a == nil {
 		cloud := t.Cloud
 		accountId, _, _ := cloud.AccountInfo()
 		region := cloud.Region()
 		// build the policy
-		policy, err := s.buildQueuePolicy(accountId, region)
+		policy, err := q.buildQueuePolicy(accountId, region)
 		if err != nil {
 			return err
 		}
@@ -122,41 +114,52 @@ func (s *SQS) RenderAWS(t *awsup.AWSAPITarget, a, e, changes *SQS) error {
 
 		request := &sqs.CreateQueueInput{
 			Attributes: map[string]*string{
-				"DelaySeconds":           aws.String("60"),
-				"MessageRetentionPeriod": aws.String("86400"),
+				"MessageRetentionPeriod": aws.String("300"),
 				"Policy": aws.String(string(p)),
 			},
-			QueueName:  s.Name,
-			Tags:       nil,
+			QueueName: q.Name,
+			Tags:      convertTagsToPointers(q.Tags),
 		}
 		klog.Warningf("The policy: %v", string(p))
-		_, err = t.Cloud.SQS().CreateQueue(request)
+		response, err := t.Cloud.SQS().CreateQueue(request)
 		if err != nil {
 			return fmt.Errorf("error creating SQS queue: %v", err)
 		}
-
+		q.URL = response.QueueUrl
 	}
 
-	// We don't tag the zone - we expect it to be shared
 	return nil
 }
 
-func (_ *SQS) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *SQS) error {
+// change tags to format required by CreateQueue
+func convertTagsToPointers(tags map[string]string) map[string]*string {
+	newTags := map[string]*string{}
+	for k, v := range tags {
+		vv := v
+		newTags[k] = &vv
+	}
+
+	return newTags
+}
+// TODO
+func (q *SQS) RenderTerraform(t *terraform.TerraformTarget, a, e, changes *SQS) error {
+	return nil
+}
+// TODO
+func (q *SQS) TerraformLink() *terraform.Literal {
+	return nil
+}
+// TODO
+func (q *SQS) RenderCloudformation(t *cloudformation.CloudformationTarget, a, e, changes *SQS) error {
+	return nil
+}
+// TODO
+func (q *SQS) CloudformationLink() *cloudformation.Literal {
 	return nil
 }
 
-func (_ *SQS) TerraformLink() *terraform.Literal {
-	return nil
-}
-
-func (_ *SQS) RenderCloudformation(t *cloudformation.CloudformationTarget, a, e, changes *SQS) error {
-	return nil
-}
-
-func (_ *SQS) CloudformationLink() *cloudformation.Literal {
-	return nil
-}
-
+// Todo see if we can leverage existing IAM stuff instead of making these structs here.
+// when I tried initially to do so I got a cyclic import :/
 type Principal struct {
 	Service []string
 }
@@ -175,20 +178,7 @@ type Policy struct {
 
 func (q *SQS) buildQueuePolicy(accountId, region string) (Policy, error) {
 	klog.Warning("JASON In buildQueuePolicy")
-	//{
-	//    "Version": "2012-10-17",
-	//    "Id": "MyQueuePolicy",
-	//    "Statement": [{
-	//        "Effect": "Allow",
-	//        "Principal": {
-	//            "Service": ["events.amazonaws.com", "sqs.amazonaws.com"]
-	//        },
-	//        "Action": "sqs:SendMessage",
-	//        "Resource": [
-	//            "arn:aws:sqs:${AWS_REGION}:${ACCOUNT_ID}:${SQS_QUEUE_NAME}"
-	//        ]
-	//    }]
-	//}
+
 	statement := Statement{
 		Effect:    "Allow",
 		Principal: Principal{
@@ -205,6 +195,3 @@ func (q *SQS) buildQueuePolicy(accountId, region string) (Policy, error) {
 
 	return policy, nil
 }
-
-//"Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"MyQueuePolicy\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":[\"sqs.amazonaws.com\",\"events.amazonaws.com\"]},\"Action\":\"sqs:SendMessage\",\"Resource\":\"arn:aws:sqs:us-east-2:259072402577:testQueueName\"}]}",
-//"Policy": "{\"Version\":\"2012-10-17\",\"Statement\":{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"[\\\"events.amazonaws.com\\\", \\\"sqs.amazonaws.com\\\"]\"},\"Action\":\"sqs:SendMessage\",\"Resource\":\"arn:aws:sqs:us-east-2:953943258687:myFirstQueuePlsWork\"}}"
